@@ -4,39 +4,6 @@
 RailMadad is a **web‑based platform** that enables railway passengers and local stakeholders to lodge complaints, provide feedback, and receive timely resolutions. The system harnesses **Gemini AI** and **sentiment analysis** to streamline the handling of diverse inputs (text, audio, images, video) even when connectivity is intermittent. 
 ---
 
-## 🏗️ Architecture Diagram
-```mermaid
-flowchart TB
-    subgraph FrontEnd[Front‑End (HTML/CSS/JS)]
-        UI[User Interface]
-    end
-    subgraph Backend[Flask Backend (app.py)]
-        API[API Endpoints]
-        Auth[Authentication]
-    end
-    subgraph AI[AI Engine (ai_engine.py)]
-        Gemini[Gemini Cloud Service]
-    end
-    subgraph Sentiment[Sentiment Analyzer (ml_sentiment.py)]
-        SentModel[ML Sentiment Model]
-    end
-    subgraph Voice[Voice Processing]
-        Vosk[Vosk Speech‑to‑Text]
-    end
-    UI --> API
-    API --> Auth
-    API --> Gemini
-    API --> SentModel
-    API --> Vosk
-    Gemini -- "Online" --> API
-    SentModel -- "Offline" --> API
-    Vosk -- "Offline Audio" --> API
-    classDef cloud fill:#bbf,stroke:#333,stroke-width:2px;
-    class Gemini cloud;
-```
-
----
-
 ## 🧩 Core Components
 | Component | Description | Key Technologies |
 |-----------|-------------|-------------------|
