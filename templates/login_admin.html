@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Admin — RailMadad{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="nav-top">
+    <h1 class="page-title">Operations login</h1>
+    <a class="link-back" href="{{ url_for('home') }}">← Home</a>
+  </div>
+  <p class="sub">Authorized staff only — manage complaints and status for all passengers.</p>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <form method="post" action="{{ url_for('login_admin') }}">
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" value="admin" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" />
+    </div>
+    <button type="submit" class="btn btn-admin" style="width: 100%">Enter admin dashboard</button>
+  </form>
+</div>
+{% endblock %}

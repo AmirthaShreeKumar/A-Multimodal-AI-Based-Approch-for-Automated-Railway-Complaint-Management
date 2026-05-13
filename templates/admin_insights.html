@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Admin — Insights · RailMadad{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="admin-banner">
+    <span aria-hidden="true">◆</span>
+    <span><strong>Operations console</strong> — passenger feedback trends.</span>
+  </div>
+
+  <div class="dashboard-head">
+    <div>
+      <p class="section-label" style="margin-bottom: 0.25rem">Staff</p>
+      <h1 class="welcome-line">Insights</h1>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('logout') }}" style="padding: 0.5rem 1rem; font-size: 0.85rem">Log
+      out</a>
+  </div>
+
+  {% include "includes/admin_nav.html" %}
+
+  <p class="sub" style="margin-top: 0.75rem">
+    Ratings and comments after tickets are marked <strong>resolved</strong>.
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories =true) %}
+  {% if messages %}
+  {% for category, message in messages %}
+  <div class="flash flash-{{ category }}">{{ message }}</div>
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+  <p class="section-label" style="margin-top: 0.75rem">Feedback</p>
+  <h2 class="section-title">Passenger feedback analysis</h2>
+
+  {% if feedback_count %}
+  <div class="feedback-stats">
+    <div class="feedback-stat-card">
+      <span class="feedback-stat-value">{{ avg_rating }}</span>
+      <span class="feedback-stat-label">Avg rating (1–5)</span>
+    </div>
+    <div class="feedback-stat-card">
+      <span class="feedback-stat-value">{{ feedback_count }}</span>
+      <span class="feedback-stat-label">Total responses</span>
+    </div>
+    <div class="feedback-stat-card">
+      <span class="feedback-stat-value">{{ resolved_with_fb }}{% if resolved_total %} / {{ resolved_total }}{% endif
+        %}</span>
+      <span class="feedback-stat-label">Resolved tickets with feedback</span>
+    </div>
+  </div>
+  {% if resolved_no_fb %}
+  <p class="small" style="margin-top: 0.75rem">
+    {{ resolved_no_fb }} resolved ticket(s) have not received passenger feedback yet.
+  </p>
+  {% endif %}
+  <p class="small" style="margin: 1rem 0 0.5rem"><strong>Star distribution</strong></p>
+  <div class="rating-bars">
+    {% for stars in [5, 4, 3, 2, 1] %}
+    {% set cnt = rating_dist.get(stars, 0) %}
+    {% set pct = (100 * cnt / feedback_count) if feedback_count else 0 %}
+    <div class="rating-bar-row">
+      <span class="rating-bar-label">{{ stars }}★</span>
+      <div class="rating-bar-track"><span class="rating-bar-fill" style="width: {{ '%.1f'|format(pct) }}%"></span></div>
+      <span class="rating-bar-count">{{ cnt }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="section-label" style="margin-top: 1.5rem">Feedback Sentiment</p>
+  <div style="max-width: 300px; margin: 1.5rem auto;">
+    <canvas id="sentimentChart"></canvas>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const ctx = document.getElementById('sentimentChart');
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Positive', 'Neutral', 'Negative'],
+          datasets: [{
+            data: [
+              {{ sentiment_counts.get('Positive', 0) }},
+          {{ sentiment_counts.get('Neutral', 0) }},
+                {{ sentiment_counts.get('Negative', 0) }}
+              ],
+      backgroundColor: [
+      '#10b981', // emerald-500
+      '#9ca3af', // gray-400
+      '#ef4444'  // red-500
+    ],
+      borderWidth: 0,
+      hoverOffset: 4
+            }]
+          },
+      options: {
+      responsive: true,
+      cutout: '75%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { padding: 20, usePointStyle: true }
+        }
+      }
+    }
+        });
+      });
+  </script>
+
+  <p class="section-label" style="margin-top: 2rem">Recent comments</p>
+  <div class="feedback-analysis-list">
+    {% for f in all_feedback[:25] %}
+    <div class="feedback-analysis-item">
+      <div class="meta">
+        <span><strong>#{{ f.complaint_id }}</strong> · {{ f.user.username }}</span>
+        <span>{{ f.created_at.strftime('%d %b %Y, %H:%M') }} UTC</span>
+        <span class="feedback-stars-inline" aria-label="Rating {{ f.rating }} out of 5">{% for _ in range(f.rating)
+          %}★{% endfor %}{% for _ in range(5 - f.rating) %}☆{% endfor %}</span>
+      </div>
+      {% if f.comment %}
+      <p class="feedback-comment-text">{{ f.comment }}</p>
+      {% else %}
+      <p class="small" style="margin: 0">No written comment.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">No feedback yet. Passengers can rate resolved complaints from their dashboard.</div>
+  {% endif %}
+</div>
+{% endblock %}

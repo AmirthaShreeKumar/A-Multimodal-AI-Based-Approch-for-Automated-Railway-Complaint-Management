@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Admin — Overview · RailMadad{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="admin-banner">
+    <span aria-hidden="true">◆</span>
+    <span><strong>Operations console</strong> — use the tabs below to move between sections.</span>
+  </div>
+
+  <div class="dashboard-head">
+    <div>
+      <p class="section-label" style="margin-bottom: 0.25rem">Staff</p>
+      <h1 class="welcome-line">Overview</h1>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('logout') }}" style="padding: 0.5rem 1rem; font-size: 0.85rem">Log out</a>
+  </div>
+
+  {% include "includes/admin_nav.html" %}
+
+  <p class="sub" style="margin-top: 0.75rem">
+    Snapshot of workload and routing. Open <a href="{{ url_for('admin_queue') }}">Queue</a> to update ticket status.
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <p class="section-label" style="margin-top: 0.75rem">Totals</p>
+  <h2 class="section-title">Complaint totals</h2>
+  <p class="small" style="margin: -0.35rem 0 0.75rem">
+    All filings in the system, by current workflow status.
+  </p>
+  <div class="admin-overview-stats">
+    <div class="feedback-stat-card">
+      <span class="feedback-stat-value">{{ total_complaints }}</span>
+      <span class="feedback-stat-label">Total complaints</span>
+    </div>
+    <div class="feedback-stat-card">
+      <span class="feedback-stat-value">{{ count_pending }}</span>
+      <span class="feedback-stat-label">Pending</span>
+    </div>
+    <div class="feedback-stat-card">
+      <span class="feedback-stat-value">{{ count_in_progress }}</span>
+      <span class="feedback-stat-label">In progress</span>
+    </div>
+    <div class="feedback-stat-card">
+      <span class="feedback-stat-value">{{ count_resolved }}</span>
+      <span class="feedback-stat-label">Resolved</span>
+    </div>
+  </div>
+
+  <p class="section-label" style="margin-top: 1.35rem">Routing</p>
+  <h2 class="section-title">Complaints by category</h2>
+  <p class="small" style="margin: -0.35rem 0 0.75rem">
+    Count per AI-assigned category (bar length scales to the largest category).
+  </p>
+  {% if category_rows %}
+    <div class="category-bars" role="img" aria-label="Bar chart of complaints by category">
+      {% for name, cnt in category_rows %}
+        {% set pct = (100 * cnt / category_max) if category_max else 0 %}
+        <div class="category-bar-row">
+          <span class="category-bar-label" title="{{ name }}">{{ name }}</span>
+          <div class="category-bar-track"><span class="category-bar-fill" style="width: {{ '%.1f'|format(pct) }}%"></span></div>
+          <span class="category-bar-count">{{ cnt }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="small" style="margin: 0">No complaints yet — this chart will fill in after passengers file grievances.</p>
+  {% endif %}
+
+  <hr class="divider" />
+
+  <p class="section-label">Shortcuts</p>
+  <ul class="admin-shortcuts">
+    <li><a href="{{ url_for('admin_queue') }}">Ticket queue</a> — active and resolved tickets, status updates.</li>
+    <li><a href="{{ url_for('admin_manifest') }}">Passenger manifest</a> — who may verify PNR and file complaints.</li>
+    <li><a href="{{ url_for('admin_insights') }}">Feedback insights</a> — ratings and comments after resolution.</li>
+  </ul>
+</div>
+{% endblock %}

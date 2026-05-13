@@ -1,0 +1,27 @@
+text,sentiment
+"The train was exceptionally clean and the staff was very polite.",Positive
+"I had a wonderful journey. The food served was hot and delicious.",Positive
+"Very smooth booking process. I got my ticket confirmed immediately.",Positive
+"The TT was very helpful in finding my seat. Great service!",Positive
+"Comfortable seats and air conditioning was working perfectly.",Positive
+"I really appreciate the quick response from RPF when I needed help.",Positive
+"Excellent infrastructure at the station. Very well maintained.",Positive
+"The bedding provided was fresh and clean. Loved the experience.",Positive
+"The journey was okay, nothing special to mention.",Neutral
+"Food was average, not too bad but could be better.",Neutral
+"Train was slightly delayed but reached almost on time.",Neutral
+"The station was crowded, but that is expected during festivals.",Neutral
+"Standard experience, seats were fine.",Neutral
+"Ticket checking was done normally.",Neutral
+"The AC cooling was adequate, not too cold.",Neutral
+"It was a regular train ride.",Neutral
+"The toilet was extremely dirty and had no water.",Negative
+"Staff behavior was very rude and unprofessional.",Negative
+"Train is delayed by 4 hours without any prior information. Very frustrating.",Negative
+"The food quality is pathetic. I found a bug in my meal.",Negative
+"My luggage got stolen from the coach. Zero security!",Negative
+"The AC is not working in coach B1. We are suffocating.",Negative
+"Booking website is crashing continuously. Cannot book tickets.",Negative
+"Fans are not working and the compartment is full of unreserved passengers.",Negative
+"There is garbage everywhere on the platform.",Negative
+"The TT asked for a bribe to give me a confirmed seat.",Negative

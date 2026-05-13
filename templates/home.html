@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Welcome — RailMadad{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="hero">
+    <p class="hero-badge">Indian Railways · Passenger care</p>
+    <h1 class="hero-title">Your voice reaches the right desk</h1>
+    <p class="hero-lead">
+      RailMadad helps you file and track grievances with smart routing by department and priority —
+      using text, photos, voice, or video.
+    </p>
+    <div class="feature-strip">
+      <span class="feature-pill">Text</span>
+      <span class="feature-pill">Photo</span>
+      <span class="feature-pill">Voice</span>
+      <span class="feature-pill">Video</span>
+      <span class="feature-pill">AI classification</span>
+    </div>
+  </div>
+
+  <p class="section-label">Choose portal</p>
+  <div class="portal-grid">
+    <a class="portal-card portal-card--register" href="{{ url_for('register') }}">
+      <span class="portal-icon" aria-hidden="true">✦</span>
+      <strong>Register</strong>
+      <span>New passenger? Create your account in seconds.</span>
+    </a>
+    <a class="portal-card" href="{{ url_for('login_user') }}">
+      <span class="portal-icon" aria-hidden="true">🎫</span>
+      <strong>Passenger</strong>
+      <span>Log in to file a complaint and view your history.</span>
+    </a>
+    <a class="portal-card portal-card--admin" href="{{ url_for('login_admin') }}">
+      <span class="portal-icon" aria-hidden="true">⚙</span>
+      <strong>Admin</strong>
+      <span>Staff dashboard — review and update ticket status.</span>
+    </a>
+  </div>
+
+  <div class="demo-hint">
+    Demo admin login: <strong>admin</strong> / <strong>admin</strong>
+  </div>
+</div>
+{% endblock %}

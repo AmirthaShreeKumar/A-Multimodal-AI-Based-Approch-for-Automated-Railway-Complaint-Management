@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Register — RailMadad{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="nav-top">
+    <h1 class="page-title">Create account</h1>
+    <a class="link-back" href="{{ url_for('home') }}">← Home</a>
+  </div>
+  <p class="sub">Use your name and a password you’ll remember. You’ll use the same name to log in.</p>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <form method="post" action="{{ url_for('register') }}">
+    <div class="form-group">
+      <label for="username">Display name</label>
+      <input type="text" id="username" name="username" required autocomplete="username" placeholder="How we greet you" />
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="new-password" />
+    </div>
+    <button type="submit" class="btn btn-primary" style="width: 100%">Register</button>
+  </form>
+  <p class="small" style="margin-top: 1.15rem; text-align: center">
+    Already registered? <a href="{{ url_for('login_user') }}">Passenger login</a>
+  </p>
+</div>
+{% endblock %}

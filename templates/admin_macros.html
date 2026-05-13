@@ -1,0 +1,51 @@
+{% macro admin_ticket(c, status_action_url) %}
+<article class="complaint-item complaint-item--{{ c.status }}">
+  <div class="meta">
+    <span><strong>Passenger</strong> {{ c.user.username }}</span>
+    <span>{{ c.created_at.strftime('%d %b %Y, %H:%M') }} UTC</span>
+    {% if c.booking_pnr %}
+      <span><strong>PNR</strong> {{ c.booking_pnr }}</span>
+      <span><strong>Train</strong> {{ c.booking_train or '—' }}</span>
+      <span><strong>Seat</strong> {{ c.booking_seat or '—' }}</span>
+      <span><strong>Email</strong> {{ c.booking_email or '—' }}</span>
+      <span><strong>Phone</strong> {{ c.booking_phone or '—' }}</span>
+      <span><strong>Location</strong> {{ c.booking_location or '—' }}</span>
+    {% endif %}
+    <span><strong>Category</strong> {{ c.category or '—' }}</span>
+    <span><strong>Dept</strong> {{ c.department or '—' }}</span>
+    <span class="badge-priority-{{ c.priority }}">Prio: {{ c.priority }}</span>
+    <span class="small">Sentiment: {{ c.sentiment or '—' }}</span>
+    <span class="badge badge-{{ c.status }}">{{ c.status.replace('_', ' ') }}</span>
+    {% if c.feedback %}
+      <span class="badge feedback-badge" title="Passenger feedback">★ {{ c.feedback.rating }}/5</span>
+    {% endif %}
+  </div>
+  {% if c.text and c.text.strip() and not (c.text.startswith('[Media-only complaint') or c.text.startswith('[No written text')) %}
+    <p>{{ c.text }}</p>
+  {% endif %}
+  {% set att = c.attachment_filenames() %}
+  {% if att %}
+    <p class="small attach-links" style="margin-top: 0.5rem">
+      <strong style="color: var(--text-soft)">Attachments</strong> ·
+      {% for kind, fname in att.items() %}
+        <a href="{{ url_for('serve_attachment', fname=fname) }}">{{ kind }}</a>{% if not loop.last %} · {% endif %}
+      {% endfor %}
+    </p>
+  {% endif %}
+  {% if c.summary %}
+    <p class="small" style="margin-top: 0.65rem; padding-top: 0.65rem; border-top: 1px solid var(--border); line-height: 1.5">
+      <strong style="color: var(--accent)">AI summary</strong><br />{{ c.summary }}
+    </p>
+  {% endif %}
+  <form class="inline-form" method="post" action="{{ status_action_url }}">
+    <input type="hidden" name="complaint_id" value="{{ c.id }}" />
+    <label for="status-{{ c.id }}" class="small" style="margin: 0; text-transform: none; letter-spacing: 0">Update status</label>
+    <select id="status-{{ c.id }}" name="status">
+      <option value="pending" {% if c.status == 'pending' %}selected{% endif %}>Pending</option>
+      <option value="in_progress" {% if c.status == 'in_progress' %}selected{% endif %}>In progress</option>
+      <option value="resolved" {% if c.status == 'resolved' %}selected{% endif %}>Resolved</option>
+    </select>
+    <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1.1rem; font-size: 0.85rem">Save</button>
+  </form>
+</article>
+{% endmacro %}

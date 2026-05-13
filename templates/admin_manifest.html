@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Admin — Manifest · RailMadad{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="admin-banner">
+    <span aria-hidden="true">◆</span>
+    <span><strong>Operations console</strong> — passenger access control.</span>
+  </div>
+
+  <div class="dashboard-head">
+    <div>
+      <p class="section-label" style="margin-bottom: 0.25rem">Staff</p>
+      <h1 class="welcome-line">Passenger manifest</h1>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('logout') }}" style="padding: 0.5rem 1rem; font-size: 0.85rem">Log out</a>
+  </div>
+
+  {% include "includes/admin_nav.html" %}
+
+  <p class="sub" style="margin-top: 0.75rem">
+    Passengers listed here may log in (same <strong>username</strong>) and file complaints only after entering a matching <strong>PNR</strong>. One row per booking (unique PNR).
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <p class="section-label" style="margin-top: 0.75rem">Access control</p>
+  {% if edit_manifest_row %}
+    <form method="post" action="{{ url_for('admin_manifest') }}" class="panel manifest-form-panel">
+      <input type="hidden" name="action" value="update" />
+      <input type="hidden" name="id" value="{{ edit_manifest_row.id }}" />
+      <p class="section-label" style="margin-bottom: 0.5rem">Edit manifest entry</p>
+      <div class="manifest-form-grid">
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="m-username">Username</label>
+          <input type="text" id="m-username" name="username" value="{{ edit_manifest_row.username }}" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="m-pnr">PNR</label>
+          <input type="text" id="m-pnr" name="pnr" value="{{ edit_manifest_row.pnr }}" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="m-train">Train name / number</label>
+          <input type="text" id="m-train" name="train_name" value="{{ edit_manifest_row.train_name }}" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="m-loc">Location</label>
+          <input type="text" id="m-loc" name="location" value="{{ edit_manifest_row.location }}" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="m-seat">Seat</label>
+          <input type="text" id="m-seat" name="seat" value="{{ edit_manifest_row.seat }}" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="m-email">Email</label>
+          <input type="email" id="m-email" name="email" value="{{ edit_manifest_row.email }}" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="m-phone">Phone</label>
+          <input type="tel" id="m-phone" name="phone" value="{{ edit_manifest_row.phone or '' }}" required placeholder="+91…" />
+        </div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem">
+        <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1.1rem; font-size: 0.85rem">Save changes</button>
+        <a class="btn btn-secondary" href="{{ url_for('admin_manifest') }}" style="padding: 0.5rem 1rem; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center">Cancel</a>
+      </div>
+    </form>
+  {% else %}
+    <form method="post" action="{{ url_for('admin_manifest') }}" class="panel manifest-form-panel">
+      <input type="hidden" name="action" value="add" />
+      <p class="section-label" style="margin-bottom: 0.5rem">Add passenger</p>
+      <div class="manifest-form-grid">
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="a-username">Username</label>
+          <input type="text" id="a-username" name="username" required placeholder="Must match login name" />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="a-pnr">PNR</label>
+          <input type="text" id="a-pnr" name="pnr" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="a-train">Train name / number</label>
+          <input type="text" id="a-train" name="train_name" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="a-loc">Location</label>
+          <input type="text" id="a-loc" name="location" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="a-seat">Seat</label>
+          <input type="text" id="a-seat" name="seat" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="a-email">Email</label>
+          <input type="email" id="a-email" name="email" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 0">
+          <label for="a-phone">Phone</label>
+          <input type="tel" id="a-phone" name="phone" required placeholder="+91…" />
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top: 1rem; padding: 0.5rem 1.1rem; font-size: 0.85rem">Add to manifest</button>
+    </form>
+  {% endif %}
+
+  {% if manifest_rows %}
+    <div class="manifest-table-wrap">
+      <table class="manifest-table">
+        <thead>
+          <tr>
+            <th scope="col">Username</th>
+            <th scope="col">PNR</th>
+            <th scope="col">Train</th>
+            <th scope="col">Location</th>
+            <th scope="col">Seat</th>
+            <th scope="col">Email</th>
+            <th scope="col">Phone</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in manifest_rows %}
+            <tr>
+              <td>{{ m.username }}</td>
+              <td><code class="manifest-pnr">{{ m.pnr }}</code></td>
+              <td>{{ m.train_name }}</td>
+              <td>{{ m.location }}</td>
+              <td>{{ m.seat }}</td>
+              <td class="manifest-email-cell">{{ m.email }}</td>
+              <td>{{ m.phone or '—' }}</td>
+              <td class="manifest-actions">
+                <a class="btn btn-secondary" href="{{ url_for('admin_manifest', manifest_edit=m.id) }}" style="padding: 0.35rem 0.65rem; font-size: 0.78rem; text-decoration: none">Edit</a>
+                <form method="post" action="{{ url_for('admin_manifest') }}" class="manifest-delete-form" onsubmit="return confirm('Remove this row from the manifest?');">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="id" value="{{ m.id }}" />
+                  <button type="submit" class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.78rem">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="small" style="margin: 1rem 0 0">No manifest rows yet. Add passengers above (e.g. up to 10 bookings).</p>
+  {% endif %}
+</div>
+{% endblock %}

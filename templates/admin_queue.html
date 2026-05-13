@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% import "admin_macros.html" as adm %}
+{% block title %}Admin — Queue · RailMadad{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="admin-banner">
+    <span aria-hidden="true">◆</span>
+    <span><strong>Operations console</strong> — status changes sync to the passenger’s dashboard immediately.</span>
+  </div>
+
+  <div class="dashboard-head">
+    <div>
+      <p class="section-label" style="margin-bottom: 0.25rem">Staff</p>
+      <h1 class="welcome-line">Ticket queue</h1>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('logout') }}" style="padding: 0.5rem 1rem; font-size: 0.85rem">Log out</a>
+  </div>
+
+  {% include "includes/admin_nav.html" %}
+
+  <p class="sub" style="margin-top: 0.75rem">
+    Active tickets need action. Resolved items are in <strong>history</strong> below; you can change status to reopen if needed.
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if not active_complaints and not resolved_complaints %}
+    <div class="empty-state" style="margin-top: 1rem">No complaints in the system. New filings from passengers will show up here.</div>
+  {% else %}
+    <p class="section-label" style="margin-top: 0.75rem">Needs attention</p>
+    <h2 class="section-title">Active queue</h2>
+    {% if active_complaints %}
+      <div class="complaint-list">
+        {% for c in active_complaints %}
+          {{ adm.admin_ticket(c, url_for('admin_queue')) }}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state" style="margin-bottom: 1.75rem">No open tickets — everything is resolved or you’re all caught up.</div>
+    {% endif %}
+
+    <hr class="divider" />
+
+    <p class="section-label">Archive</p>
+    <h2 class="section-title">Resolved history</h2>
+    <p class="small" style="margin: -0.35rem 0 1rem">Newest filings first. Use <strong>Save</strong> to move a ticket back to pending or in progress.</p>
+    {% if resolved_complaints %}
+      <div class="complaint-list history-list">
+        {% for c in resolved_complaints %}
+          {{ adm.admin_ticket(c, url_for('admin_queue')) }}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">No resolved complaints yet. Mark tickets as resolved from the active queue.</div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

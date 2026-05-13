@@ -1,0 +1,6 @@
+<nav class="admin-nav" aria-label="Admin sections">
+  <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-link {% if request.endpoint == 'admin_dashboard' %}is-active{% endif %}">Overview</a>
+  <a href="{{ url_for('admin_queue') }}" class="admin-nav-link {% if request.endpoint == 'admin_queue' %}is-active{% endif %}">Queue{% if queue_active_count is defined and queue_active_count %}<span class="admin-nav-badge">{{ queue_active_count }}</span>{% endif %}</a>
+  <a href="{{ url_for('admin_manifest') }}" class="admin-nav-link {% if request.endpoint == 'admin_manifest' %}is-active{% endif %}">Manifest</a>
+  <a href="{{ url_for('admin_insights') }}" class="admin-nav-link {% if request.endpoint == 'admin_insights' %}is-active{% endif %}">Insights</a>
+</nav>
