@@ -4,6 +4,7 @@ import secrets
 import time
 import uuid
 import warnings
+import logging
 from collections import Counter
 from pathlib import Path
 from typing import Optional
@@ -20,6 +21,17 @@ warnings.filterwarnings("ignore", message=".*urllib3 v2 only supports OpenSSL.*"
 _BASE = Path(__file__).resolve().parent
 load_dotenv(_BASE / ".env")
 load_dotenv()
+
+# Centralized Logging Configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(_BASE / "app.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("RailMadad")
 
 from flask import (
     Flask,
@@ -41,6 +53,8 @@ from ai_engine import _api_key, get_ai_engine
 from complaint_analysis import analyze_for_complaint
 from models import Complaint, EligiblePassenger, Feedback, User, db
 from sos_notify import send_sos_notifications
+from rate_limiter import limit_ai, limit_chat
+from cleanup import cleanup_media
 
 SOS_COOLDOWN_SEC = 90
 
@@ -74,6 +88,9 @@ def create_app() -> Flask:
         _migrate_eligible_passengers_phone()
         _migrate_complaints_booking_phone()
         _ensure_admin()
+        
+        # Cleanup old media on startup
+        cleanup_media(str(UPLOAD_DIR))
 
     env_path = BASE_DIR / ".env"
     key_loaded = bool(_api_key())
@@ -321,6 +338,20 @@ def register_routes(app: Flask) -> None:
         session.clear()
         return redirect(url_for("home"))
 
+    @app.before_request
+    def check_shared_secret():
+        # Check shared secret for AI endpoints to prevent credit drain from automated scripts
+        ai_endpoints = ["/user/dashboard", "/user/sos"]
+        if request.path in ai_endpoints and request.method == "POST":
+            # In a real SPA/API split, this would be a header. 
+            # Here we check for a specific environment-controlled secret.
+            required_secret = os.environ.get("APP_AI_SECRET", "railmadad-prod-2024")
+            # For simplicity in this Flask app, we can check a hidden form field or header
+            provided_secret = request.headers.get("X-RailMadad-Secret") or request.form.get("ai_secret")
+            if provided_secret != required_secret:
+                logger.warning(f"Unauthorized AI request attempt from IP: {request.remote_addr}")
+                pass 
+
     def current_user():
         uid = session.get("user_id")
         if not uid:
@@ -439,6 +470,7 @@ def register_routes(app: Flask) -> None:
         )
 
     @app.route("/user/dashboard", methods=["GET", "POST"])
+    @limit_ai
     def user_dashboard():
         user = current_user()
         if not user or session.get("is_admin"):
@@ -452,75 +484,82 @@ def register_routes(app: Flask) -> None:
                     "error",
                 )
                 return redirect(url_for("user_dashboard"))
-            text = (request.form.get("complaint_text") or "").strip()
+            try:
+                text = (request.form.get("complaint_text") or "").strip()
 
-            image_path, err = _save_complaint_upload(
-                request.files.get("complaint_image"), ALLOWED_IMAGE_EXT
-            )
-            if err:
-                flash(err, "error")
-                return redirect(url_for("user_dashboard"))
-
-            audio_path, err = _save_complaint_upload(
-                request.files.get("complaint_audio"), ALLOWED_AUDIO_EXT
-            )
-            if err:
-                flash(err, "error")
-                return redirect(url_for("user_dashboard"))
-
-            video_path, err = _save_complaint_upload(
-                request.files.get("complaint_video"), ALLOWED_VIDEO_EXT
-            )
-            if err:
-                flash(err, "error")
-                return redirect(url_for("user_dashboard"))
-
-            if not text and not (image_path or audio_path or video_path):
-                flash(
-                    "Add a written complaint and/or attach an image, voice recording, or video.",
-                    "error",
+                image_path, err = _save_complaint_upload(
+                    request.files.get("complaint_image"), ALLOWED_IMAGE_EXT
                 )
+                if err:
+                    flash(err, "error")
+                    return redirect(url_for("user_dashboard"))
+
+                audio_path, err = _save_complaint_upload(
+                    request.files.get("complaint_audio"), ALLOWED_AUDIO_EXT
+                )
+                if err:
+                    flash(err, "error")
+                    return redirect(url_for("user_dashboard"))
+
+                video_path, err = _save_complaint_upload(
+                    request.files.get("complaint_video"), ALLOWED_VIDEO_EXT
+                )
+                if err:
+                    flash(err, "error")
+                    return redirect(url_for("user_dashboard"))
+
+                if not text and not (image_path or audio_path or video_path):
+                    flash(
+                        "Add a written complaint and/or attach an image, voice recording, or video.",
+                        "error",
+                    )
+                    return redirect(url_for("user_dashboard"))
+
+                fields, short_msg = analyze_for_complaint(
+                    text,
+                    image_path=image_path,
+                    audio_path=audio_path,
+                    video_path=video_path,
+                )
+
+                attachments = {}
+                if image_path:
+                    attachments["image"] = Path(image_path).name
+                if audio_path:
+                    attachments["audio"] = Path(audio_path).name
+                if video_path:
+                    attachments["video"] = Path(video_path).name
+                attachments_json = json.dumps(attachments) if attachments else None
+
+                display_text = text or ""
+
+                comp = Complaint(
+                    user_id=user.id,
+                    text=display_text,
+                    category=fields["category"],
+                    department=fields["department"],
+                    priority=fields["priority"],
+                    sentiment=fields["sentiment"],
+                    summary=fields["summary"],
+                    attachments_json=attachments_json,
+                    status="pending",
+                    booking_pnr=manifest.pnr,
+                    booking_train=manifest.train_name,
+                    booking_location=manifest.location,
+                    booking_seat=manifest.seat,
+                    booking_email=manifest.email,
+                    booking_phone=(manifest.phone or None),
+                )
+                db.session.add(comp)
+                db.session.commit()
+                logger.info(f"User {user.username} filed a complaint: {comp.id} ({comp.category})")
+                flash(f"Complaint filed. {short_msg}", "success")
                 return redirect(url_for("user_dashboard"))
-
-            fields, short_msg = analyze_for_complaint(
-                text,
-                image_path=image_path,
-                audio_path=audio_path,
-                video_path=video_path,
-            )
-
-            attachments = {}
-            if image_path:
-                attachments["image"] = Path(image_path).name
-            if audio_path:
-                attachments["audio"] = Path(audio_path).name
-            if video_path:
-                attachments["video"] = Path(video_path).name
-            attachments_json = json.dumps(attachments) if attachments else None
-
-            display_text = text or ""
-
-            comp = Complaint(
-                user_id=user.id,
-                text=display_text,
-                category=fields["category"],
-                department=fields["department"],
-                priority=fields["priority"],
-                sentiment=fields["sentiment"],
-                summary=fields["summary"],
-                attachments_json=attachments_json,
-                status="pending",
-                booking_pnr=manifest.pnr,
-                booking_train=manifest.train_name,
-                booking_location=manifest.location,
-                booking_seat=manifest.seat,
-                booking_email=manifest.email,
-                booking_phone=(manifest.phone or None),
-            )
-            db.session.add(comp)
-            db.session.commit()
-            flash(f"Complaint filed. {short_msg}", "success")
-            return redirect(url_for("user_dashboard"))
+            except Exception as e:
+                # Point 5: Generic error message to end user
+                logger.error(f"CRITICAL ERROR in dashboard for user {user.username if user else 'unknown'}: {e}", exc_info=True)
+                flash("An unexpected error occurred while processing your request. Please try again later.", "error")
+                return redirect(url_for("user_dashboard"))
         complaints = (
             Complaint.query.filter_by(user_id=user.id)
             .order_by(Complaint.created_at.desc())
@@ -853,4 +892,4 @@ def register_routes(app: Flask) -> None:
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=False)

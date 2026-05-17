@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 railmadad.db
 .DS_Store
+app.log
+logs/
+*.log

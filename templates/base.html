@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0c1929" />
-    <title>{% block title %}RailMadad{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  </head>
-  <body>
-    <header class="app-header">
-      <div class="header-inner">
-      <a href="{{ url_for('home') }}" class="brand" aria-label="RailMadad home">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c1929" />
+  <title>{% block title %}RailMitra{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <a href="{{ url_for('home') }}" class="brand" aria-label="RailMitra home">
         <span class="brand-mark" aria-hidden="true">
           <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="4" y="18" width="32" height="10" rx="2" fill="currentColor" opacity="0.9" />
@@ -28,17 +29,18 @@
           </svg>
         </span>
         <span class="brand-word">
-          <span class="brand-name">RailMadad</span>
+          <span class="brand-name">RailMitra</span>
           <span class="brand-sub">Grievance redressal</span>
         </span>
       </a>
-      </div>
-    </header>
+    </div>
+  </header>
 
-    <main class="wrap">{% block content %}{% endblock %}</main>
+  <main class="wrap">{% block content %}{% endblock %}</main>
 
-    <footer class="app-footer">
-      <p>RailMadad · AI-assisted classification for passenger feedback · For demonstration</p>
-    </footer>
-  </body>
+  <footer class="app-footer">
+    <p>RailMitra · AI-assisted classification for passenger feedback · For demonstration</p>
+  </footer>
+</body>
+
 </html>

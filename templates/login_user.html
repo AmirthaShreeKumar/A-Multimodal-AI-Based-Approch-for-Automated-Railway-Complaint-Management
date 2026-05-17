@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Passenger login — RailMadad{% endblock %}
+{% block title %}Passenger login — RailMitra{% endblock %}
 {% block content %}
 <div class="card">
   <div class="nav-top">
@@ -8,11 +8,11 @@
   </div>
   <p class="sub">Sign in to submit grievances and track them in one place.</p>
   {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="flash flash-{{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
+  {% if messages %}
+  {% for category, message in messages %}
+  <div class="flash flash-{{ category }}">{{ message }}</div>
+  {% endfor %}
+  {% endif %}
   {% endwith %}
   <form method="post" action="{{ url_for('login_user') }}">
     <div class="form-group">

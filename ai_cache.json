@@ -1,0 +1,30 @@
+{
+  "631ff3d3234ec18fb3ac7cef48083788": {
+    "category": "Cleanliness",
+    "department": "Housekeeping",
+    "priority": "Medium",
+    "sentiment": "Negative",
+    "summary": "Dirty toilets"
+  },
+  "8f1a17c9d2a0ba9e11361f62fda788a38e1ea554fdf3529480fd1a3eb4173b58": {
+    "category": "Cleanliness",
+    "department": "Housekeeping",
+    "priority": "Medium",
+    "sentiment": "Negative",
+    "summary": "The train compartment is extremely dirty and littered with trash and food waste, requiring immediate cleaning."
+  },
+  "515a0b0554cca7030b64ee62b12128461229498ba75add651b2366752dd0cddf": {
+    "category": "Cleanliness",
+    "department": "Housekeeping",
+    "priority": "Medium",
+    "sentiment": "Negative",
+    "summary": "The water dispenser/filter is extremely unhygienic with visible grime and dirt, posing a potential health risk."
+  },
+  "a1fe702f6da4039070ad6d7e08cf4bed74906d4f25364c223604204457bde56c": {
+    "category": "Cleanliness",
+    "department": "Housekeeping",
+    "priority": "Medium",
+    "sentiment": "Negative",
+    "summary": "Toilets are dirty."
+  }
+}

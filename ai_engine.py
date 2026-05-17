@@ -3,7 +3,9 @@ import mimetypes
 import os
 import re
 import time
-from typing import Any, Dict, List, Optional
+import hashlib
+from pathlib import Path
+from typing import Any, List, Dict, Optional
 
 from PIL import Image
 
@@ -13,6 +15,16 @@ try:
 except ImportError:
     genai = None  # type: ignore
     genai_types = None  # type: ignore
+
+# Cache file for AI classification results
+_CACHE_PATH = Path(__file__).with_name("ai_cache.json")
+try:
+    _ai_cache = json.loads(_CACHE_PATH.read_text())
+except Exception:
+    _ai_cache = {}
+
+from schemas import ComplaintAnalysis, ChatResponse, FaceVerification
+import asyncio
 
 # Browser voice clips are small; inline avoids File API edge cases (missing uri, etc.).
 _MAX_INLINE_AUDIO_BYTES = 8 * 1024 * 1024
@@ -61,6 +73,46 @@ def _strip_json_fence(raw: str) -> str:
     s = re.sub(r"\s*```$", "", s)
     return s.strip()
 
+def _make_cache_key(txt: str, img: Optional[str], aud: Optional[str], vid: Optional[str]) -> str:
+    h = hashlib.sha256()
+    h.update(txt.encode())
+    for p in (img, aud, vid):
+        if p and os.path.isfile(p):
+            try:
+                with open(p, "rb") as f:
+                    while True:
+                        chunk = f.read(8192)
+                        if not chunk:
+                            break
+                        h.update(chunk)
+            except Exception:
+                pass
+    return h.hexdigest()
+
+class SafetyInterceptor:
+    def __init__(self):
+        self.blocked_patterns = [
+            r"\b(hack|sql|inject|script|alert|exec)\b",  # Basic injection keywords
+            r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",  # Credit card pattern
+        ]
+        self.agricultural_keywords = [
+            "railway", "train", "pnr", "station", "coach", "berth", "seat", "ticket",
+            "rail", "madad", "indian railways", "passenger", "luggage", "cleaning"
+        ]
+
+    def is_safe(self, text: str) -> bool:
+        if not text:
+            return True
+        for pattern in self.blocked_patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                return False
+        return True
+
+    def is_relevant(self, text: str) -> bool:
+        # Simple deterministic relevance check
+        text_lower = text.lower()
+        return any(k in text_lower for k in self.agricultural_keywords)
+
 
 class AI_Engine:
     """Gemini client (google.genai) for complaint analysis, chat, and optional media."""
@@ -68,6 +120,7 @@ class AI_Engine:
     def __init__(self) -> None:
         key = _api_key()
         self.client = None
+        self.safety = SafetyInterceptor()
         if key and genai is not None:
             try:
                 self.client = genai.Client(api_key=key)
@@ -80,18 +133,17 @@ class AI_Engine:
             "gemini-2.0-flash",
             "gemini-1.5-flash",
             "gemini-1.5-pro",
-            "gemini-2.0-flash-exp",
-            "gemini-2.5-pro",
         ]
 
-    def _upload_and_wait(self, path: str, label: str) -> Optional[Any]:
+    async def _upload_and_wait_async(self, path: str, label: str) -> Optional[Any]:
         if not self.client or not path:
             return None
         try:
-            uploaded = self.client.files.upload(file=path)
+            # Note: the aio client in google-genai is used via self.client.aio
+            uploaded = await self.client.aio.files.upload(file=path)
             while uploaded.state.name == "PROCESSING":
-                time.sleep(2)
-                uploaded = self.client.files.get(name=uploaded.name)
+                await asyncio.sleep(2)
+                uploaded = await self.client.aio.files.get(name=uploaded.name)
             if uploaded.state.name == "FAILED":
                 print(f"{label} processing failed")
                 return None
@@ -150,10 +202,10 @@ class AI_Engine:
             )
         return []
 
-    def _parts_for_video(self, video_path: str) -> List[Any]:
+    async def _parts_for_video_async(self, video_path: str) -> List[Any]:
         if not genai_types or not self.client:
             return []
-        fh = self._upload_and_wait(video_path, "Video")
+        fh = await self._upload_and_wait_async(video_path, "Video")
         if not fh or not fh.uri or not fh.mime_type:
             if fh:
                 print(
@@ -165,21 +217,40 @@ class AI_Engine:
             "Video above: use visible and audible content to classify the grievance.",
         ]
 
-    def analyze_complaint(
+    async def analyze_complaint_async(
         self,
         text: str,
         image_path: Optional[str] = None,
         audio_path: Optional[str] = None,
         video_path: Optional[str] = None,
     ) -> Dict[str, Any]:
+        # Generate a deterministic key based on text and any attached media files
+        # Cache key generation moved to module level
+
+
+        # Check cache before performing any AI call
+        cache_key = _make_cache_key(text, image_path, audio_path, video_path)
+        if cache_key in _ai_cache:
+            return _ai_cache[cache_key]
+        
+        # Existing safety and client checks remain unchanged
+        if not self.safety.is_safe(text):
+            result = self.fallback_classification(text, reason="unsafe")
+            _ai_cache[cache_key] = result
+            _CACHE_PATH.write_text(json.dumps(_ai_cache, ensure_ascii=False, indent=2))
+            return result
         if not self.client:
-            return self.fallback_classification(
+            result = self.fallback_classification(
                 text,
                 image_path=image_path,
                 audio_path=audio_path,
                 video_path=video_path,
                 reason="no_key",
             )
+            _ai_cache[cache_key] = result
+            _CACHE_PATH.write_text(json.dumps(_ai_cache, ensure_ascii=False, indent=2))
+            return result
+
 
         # Media first, then instructions — improves multimodal understanding.
         prompt_parts: List[Any] = []
@@ -194,10 +265,11 @@ class AI_Engine:
                 print(f"Error loading image: {e}")
 
         if audio_path:
+            # Reuse sync part generation but could be async if needed
             prompt_parts.extend(self._parts_for_audio(audio_path))
 
         if video_path:
-            prompt_parts.extend(self._parts_for_video(video_path))
+            prompt_parts.extend(await self._parts_for_video_async(video_path))
 
         written = text.strip()
         if written:
@@ -205,42 +277,61 @@ class AI_Engine:
         else:
             prompt_parts.append(
                 "The passenger did not type a description. Use only the image/audio/video "
-                "parts above (do not claim that no media was provided if audio or video is above)."
+                "parts above."
             )
 
         prompt_parts.append(
             "You classify Indian Railways RailMadad grievances. "
-            "Categories: Cleanliness, Infrastructure, Safety, Staff Behavior, Food Quality, "
-            "Delays, Medical Emergency, Others. "
-            "Departments: Housekeeping, Engineering, RPF (Security), HR/Admin, Catering, "
-            "Operations, Medical, General. "
-            "Priority: High, Medium, Low (safety, medical, harassment → High). "
-            "Sentiment: Positive, Neutral, Negative. "
-            'Output valid JSON only: {"category":"","department":"","priority":"","sentiment":"","summary":""}. '
-            "Summary: what happened according to text and/or what you hear or see in media — "
-            "not meta-commentary about the form."
+            "Categories: Cleanliness, Infrastructure, Safety, Staff Behavior, Food Quality, Delays, Medical Emergency, Others. "
+            "Departments: Housekeeping, Engineering, RPF (Security), HR/Admin, Catering, Operations, Medical, General. "
+            "Priority Guidelines: "
+            "- High: Immediate safety threats, medical emergencies, theft, harassment, or severe accidents. "
+            "- Medium: Standard service issues like dirty toilets, rude staff behavior, food quality, or infrastructure repairs. "
+            "- Low: Minor suggestions or feedback. "
+            "Output valid JSON matching this schema: "
+            "{\"category\":\"\",\"department\":\"\",\"priority\":\"\",\"sentiment\":\"\",\"summary\":\"\"}. "
         )
 
         for model_name in self.models_to_try:
             try:
-                response = self.client.models.generate_content(
+                response = await self.client.aio.models.generate_content(
                     model=model_name,
                     contents=prompt_parts,
+                    config=genai_types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=ComplaintAnalysis
+                    )
                 )
-                json_str = _strip_json_fence(response.text or "")
-                result = json.loads(json_str)
-                return result
+                if response.text:
+                    result = json.loads(_strip_json_fence(response.text))
+                    # Store result in cache
+                    _ai_cache[cache_key] = result
+                    _CACHE_PATH.write_text(json.dumps(_ai_cache, ensure_ascii=False, indent=2))
+                    return result
             except Exception as e:
                 print(f"Model {model_name} failed: {e}")
 
-        print("All AI models failed. Using rule-based fallback.")
-        return self.fallback_classification(
+        # Fallback path – also cache the result
+        result = self.fallback_classification(
             text,
             image_path=image_path,
             audio_path=audio_path,
             video_path=video_path,
             reason="api_failed",
         )
+        _ai_cache[cache_key] = result
+        _CACHE_PATH.write_text(json.dumps(_ai_cache, ensure_ascii=False, indent=2))
+        return result
+
+    def analyze_complaint(self, *args, **kwargs):
+        """Sync wrapper for convenience"""
+        # In sync wrapper, just call async method (cache already handled there)
+        try:
+            return asyncio.run(self.analyze_complaint_async(*args, **kwargs))
+        except RuntimeError:
+            # If already in an event loop (rare in Flask unless using async extensions)
+            # Fallback directly without caching as async already handled
+            return self.fallback_classification(args[0], reason="sync_error")
 
     def fallback_classification(
         self,
@@ -285,7 +376,9 @@ class AI_Engine:
         category = "Others"
         department = "General"
         priority = "Medium"
-        if reason == "no_key":
+        if reason == "unsafe":
+            summary_note = "Your message was blocked by safety filters (potential injection or sensitive data)."
+        elif reason == "no_key":
             summary_note = (
                 "Set GOOGLE_API_KEY in your .env file to use Gemini. "
                 "Right now this was sorted with keyword rules only. "
@@ -391,7 +484,8 @@ class AI_Engine:
         else:
             summary_note += f" Auto-classified from: \"{text[:100]}...\""
 
-        return {
+        # After determining the final result, store it in the cache (if not already cached)
+        result = {
             "category": category,
             "department": department,
             "priority": priority,
@@ -399,8 +493,16 @@ class AI_Engine:
             "summary": summary_note,
             "combined_text": text.strip(),
         }
+        # Cache the fallback result as well
+        cache_key = _make_cache_key(text, image_path, audio_path, video_path)
+        _ai_cache[cache_key] = result
+        _CACHE_PATH.write_text(json.dumps(_ai_cache, ensure_ascii=False, indent=2))
+        return result
 
-    def chatbot_response(self, user_message: str) -> str:
+    async def chatbot_response_async(self, user_message: str) -> str:
+        if not self.safety.is_safe(user_message):
+            return "I cannot process this request due to safety policies."
+        
         if not self.client:
             return (
                 "I cannot reach the AI server right now. Use Register → User login → "
@@ -408,23 +510,29 @@ class AI_Engine:
             )
         prompt = (
             "You are RailAssist, the smart assistant for this railway complaint website. "
-            "Your job is to guide users on how to use THIS website to resolve issues. "
-            "To file a complaint, tell them to: 1. Login/Register. 2. Go to their Dashboard. "
-            "3. Use the New Complaint form. "
-            "Do not give generic advice about calling numbers unless it is a medical emergency. "
-            "Keep your answer under 2-3 sentences. "
             f"User asks: '{user_message}'"
         )
         for model_name in self.models_to_try:
             try:
-                response = self.client.models.generate_content(
+                response = await self.client.aio.models.generate_content(
                     model=model_name,
                     contents=[prompt],
+                    config=genai_types.GenerateContentConfig(
+                        response_schema=ChatResponse
+                    )
                 )
-                return (response.text or "").strip() or "No response."
+                if response.text:
+                    data = json.loads(_strip_json_fence(response.text))
+                    return data.get("response", "No response.")
             except Exception as e:
                 print(f"Chatbot model {model_name} failed: {e}")
         return "I am currently unable to connect to the AI server. Please try again later."
+
+    def chatbot_response(self, user_message: str) -> str:
+        try:
+            return asyncio.run(self.chatbot_response_async(user_message))
+        except:
+            return "Connection error."
 
     def analyze_sentiment(self, text: str) -> str:
         res = self.analyze_complaint(text)

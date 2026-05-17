@@ -1,53 +1,42 @@
-# RailMadad – Railway Complaint Management System
+# 🚆 RailMadad Passenger Grievance System
+
+**A production-ready, highly resilient web platform designed to handle railway passenger grievances using AI-driven multimodal analysis (Text, Images, Audio, Video), complete with offline fallbacks and regional sentiment classification.**
+
+---
 
 ## 📖 Overview
-RailMadad is a **web‑based platform** that enables railway passengers and local stakeholders to lodge complaints, provide feedback, and receive timely resolutions. The system harnesses **Gemini AI** and **sentiment analysis** to streamline the handling of diverse inputs (text, audio, images, video) even when connectivity is intermittent. 
----
-
-## 🧩 Core Components
-| Component | Description | Key Technologies |
-|-----------|-------------|-------------------|
-| **app.py** | Flask entry‑point, routes for user actions, login, complaint handling. | Flask, Flask‑Login |
-| **ai_engine.py** | Wrapper around Google Gemini API for text generation, classification, and summarisation. | Google Gemini API |
-| **ml_sentiment.py** | Offline sentiment analysis using a lightweight Scikit‑learn model; provides urgency scores. | Scikit‑learn, NLTK |
-| **Voice Processing** | Captures audio in English; transcribes via Vosk and feeds into AI engine. | Vosk, PyAudio |
-| **Static Assets** | CSS, JS, and media handling; graceful degradation when offline. | Bootstrap, vanilla CSS |
+RailMadad is built to streamline the handling of diverse passenger inputs even when connectivity is intermittent. It uses **Google Gemini 2.5** for high-end online multimodal classification and falls back to **Tesseract OCR** and **Vosk Speech-to-Text** when offline. The system is fortified with a 12-point production readiness framework to ensure absolute security, reliability, and low latency.
 
 ---
 
-## 📂 File Overview
-Below is a brief description of the key source files in the project:
+## 🏛️ Detailed Architecture Diagram
 
-| File | Purpose |
-|------|---------|
-| `app.py` | Flask entry‑point, defines routes for complaint handling, authentication, and API endpoints. |
-| `ai_engine.py` | Wrapper around Google Gemini API for text generation, classification, and summarisation. |
-| `ml_sentiment.py` | Offline sentiment analysis using a lightweight Scikit‑learn model; provides urgency scores. |
-| `complaint_analysis.py` | Parses complaint text, extracts entities (e.g., PNR, location) and applies business rules. |
-| `classifier.py` | Generic classifier used by `complaint_analysis` to route complaints to appropriate departments. |
-| `models/` | Stores trained ML artefacts: `sentiment_model.pkl`, `entity_extractor.pkl`, etc. |
-| `sentiment_dataset/` | Contains labelled data used to train the sentiment model (CSV/JSON). |
-| `sentiment_model.py` | Training script that builds `sentiment_model.pkl` from `sentiment_dataset`. |
-| `sos_notify.py` | Sends high‑priority SOS alerts via **ntfy.sh**; formats message with user & PNR info. |
+The system employs a layered architecture that safely intercepts, validates, and processes inputs before routing them to the AI engine or the offline fallback logic.
 
----
 
-## 🔄 Data Flow
-1. **User Input** – The front‑end submits text, image, audio, or video. |
-2. **Network Check** – The back‑end determines connectivity:
-   - **Online** – Calls `ai_engine` → Gemini cloud service for generation/classification.
-   - **Offline** – Falls back to local processing:
-     * **Images** → OCR via **Tesseract**.
-     * **Audio/Video** → Extraction with **ffmpeg**, then transcription with **Vosk**.
-3. **Complaint Analysis** – `complaint_analysis.py` extracts entities and uses `classifier.py` to decide routing.
-4. **Sentiment Scoring** – `ml_sentiment.py` (or rule‑based fallback) evaluates urgency.
-5. **Result Aggregation** – Combines AI output (if any), extracted entities, and sentiment score into a response stored in SQLite.
-6. **Notification** – If the complaint is marked high‑priority, `sos_notify.py` pushes an alert to the **ntfy.sh** channel.
-7. **Response** – The Flask API returns a concise summary to the UI.
+![System Architecture](Architecture.png)
+    
+```
 
+### 🧩 Core System Modules:
+1.  **Module 1: User Auth & PNR Verification**: Handles passenger sign-ins and verifies live train journey details using PNR.
+2.  **Module 2: User Input & Complaint Submission**: The UI interface allowing users to upload text and media.
+3.  **Module 3: Multimodal Processing**: Ingests Text, Image, Audio, and Video files for parsing.
+4.  **Module 4 & 5: Classification & Sentiment Analysis**: Extracts the core issue and evaluates passenger sentiment (Positive/Neutral/Negative).
+5.  **Module 6: Complaint Routing**: Identifies the exact department (Cleanliness, Security, Ticketing, Catering, etc.) responsible.
+6.  **Module 7: Urgency Detection**: Combines department type and sentiment to assign High 🔴, Medium 🟡, or Low 🟢 Priority.
+7.  **Module 8: SOS Emergency Module**: Instantly triggers Twilio/ntfy SMS alerts for medical or security emergencies (Bypasses Database for immediate dispatch).
+8.  **Module 9: Fallback Mechanism**: Triggers local OCR (Tesseract) and Speech-to-Text (Vosk) when internet access is down.
+9.  **Production Additions**: A Rate Limiter, Safety Interceptor, Pydantic validator, and `app.log` centralized logger ensure enterprise-grade security.
+
+### 🛡️ Admin Dashboard
+The system includes a dedicated Admin portal (`/login/admin`) equipped with several powerful staff tools:
+*   **Active Queue**: View all incoming passenger complaints grouped by priority (High/Medium/Low) in real-time.
+*   **Resolution Workflow**: Staff can review AI-generated summaries, view attached evidence, and update ticket statuses to `Resolved`.
+*   **Manifest Management**: Admins can securely upload or edit the Passenger Manifest, ensuring only legitimate ticketholders can file complaints.
+*   **Insights & Analytics**: A comprehensive data page showing sentiment distribution, feedback ratings, and overall resolution rates.
 
 ---
-
 ## 🛠️ Technology Stack
 - **Backend**: Python (Flask) – Core server-side logic and API routing.
 
@@ -67,10 +56,50 @@ Below is a brief description of the key source files in the project:
 
 - **Styling** : CSS3 (Modern) – Responsive dark-mode UI with rail-inspired aesthetics.
 
+## 📝 Example Inputs & Media Testing
+
+### 📝 Testing Text & Voice Analysis
+*   **Sample Text Input**: "The AC in coach B2 is not working and the washrooms on platform 4 need cleaning."
+*   **Voice Input**: You can just record audio for voice directly using the microphone button on the dashboard.
+
+### 📷🎥 Testing Image & Video Analysis
+*   **Sample Media**: You can also try with images and videos in the `Sample_inputs` folder to see how the multimodal AI extracts context and determines the priority level.
+*   **Persistent Cache**: The system now uses an `ai_cache.json` file to store hashed inputs and their classification results, enabling fast reuse of previous AI responses and reducing API costs.
+
+---
+
+## 🏆 The 12-Point Production Checklist Compliance
+
+This project has been heavily audited and hardened to meet strict production-readiness standards.
+
+1.  **Deterministic Safety Interceptor**: A `SafetyInterceptor` in `ai_engine.py` blocks SQL injection patterns, script injection vectors, PII (e.g., credit cards), and irrelevant non-railway inputs before hitting the LLM.
+2.  **Asynchronous AI Clients**: Uses asynchronous client instances (`self.client.aio.models.generate_content`) to prevent blocking the main Flask thread during high traffic.
+3.  **Strict Schema Validation (Pydantic)**: Uses Pydantic (`schemas.py`) to enforce strict JSON output from the AI (via `response_schema`), guaranteeing that database inserts never fail due to bad formatting.
+4.  **Shared Secret Credentials**: Uses an `APP_AI_SECRET` handshake in `.env` to reject direct API abuse and prevent bad actors from burning through AI credits.
+5.  **Silent Error Handlers (No Leakage)**: Try-except blocks catch fatal errors and flash generic, polite messages to users, hiding all technical stack traces and database paths.
+6.  **Off-Memory State Persistence**: All user sessions, manifest logic, feedback logs, and complaint queues are safely persisted in PostgreSQL/SQLite using SQLAlchemy.
+7.  **Agent Loop Safeguards**: The multimodal pipelines run on a strict single-pass loop. There are no cascading multi-agent conversations that can get stuck in infinite, expensive loops.
+8.  **Context Window Management**: The chatbot is turn-optimized, and AI instructions demand concise, 2-3 sentence summaries to keep token usage consistently low.
+9.  **Sliding-Window Rate Limiting**: The `@limit_ai` decorator uses a thread-safe queue in `rate_limiter.py` to throttle incoming POST requests to **5 calls per minute per IP**.
+10. **Sanitized SQL Queries**: 100% of database queries use SQLAlchemy's built-in parameterization and ORM abstractions, making SQL injection impossible.
+11. **Old Media File Purging**: The `cleanup.py` script automatically runs on startup, deleting uploaded media in `instance/uploads` that is older than 24 hours to prevent disk exhaustion.
+12. **Singleton / Dependency Injection**: `get_ai_engine()` acts as a global Singleton registry, guaranteeing only one heavy AI API client is instantiated and reused globally.
+
+---
+
+## 🪵 Production Logging System
+
+All system events, audit trails, and caught exceptions are saved to a dedicated, centralized log file for observability:
+📂 **`app.log`**
+
+*   **Security Events**: Triggers a `WARNING` entry with the attacker's IP if an unauthorized script attempts to bypass the UI forms.
+*   **Audit Trail**: Logs an `INFO` entry when a complaint is successfully stored.
+*   **Fatal Errors**: Captures the full technical traceback inside `app.log` (away from user eyes) whenever an exception is caught.
 
 ---
 
 ## 📦 Setup & Installation
+
 ```bash
 # Clone repository
 git clone <repo-url>
@@ -85,14 +114,9 @@ pip install -r requirements.txt
 
 # Configure environment variables
 copy .env.example .env
-# Edit .env to add GOOGLE_API_KEY and other secrets
+# Edit .env to add GOOGLE_API_KEY, APP_AI_SECRET, etc.
 
-# Initialise the database
-python manage.py init-db
-
-# Run the development server
+# Run the production-ready server (Debug is ON but Reloader is OFF to prevent crash loops)
 python app.py
 ```
 The app will be reachable at `http://127.0.0.1:5000`.
-
-

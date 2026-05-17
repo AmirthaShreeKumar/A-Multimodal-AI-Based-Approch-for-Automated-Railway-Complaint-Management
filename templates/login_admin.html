@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Admin — RailMadad{% endblock %}
+{% block title %}Admin — RailMitra{% endblock %}
 {% block content %}
 <div class="card">
   <div class="nav-top">
@@ -8,11 +8,11 @@
   </div>
   <p class="sub">Authorized staff only — manage complaints and status for all passengers.</p>
   {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="flash flash-{{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
+  {% if messages %}
+  {% for category, message in messages %}
+  <div class="flash flash-{{ category }}">{{ message }}</div>
+  {% endfor %}
+  {% endif %}
   {% endwith %}
   <form method="post" action="{{ url_for('login_admin') }}">
     <div class="form-group">
