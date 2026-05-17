@@ -8,4 +8,4 @@ railmadad.db
 app.log
 logs/
 *.log
-instance/
+instance/**
