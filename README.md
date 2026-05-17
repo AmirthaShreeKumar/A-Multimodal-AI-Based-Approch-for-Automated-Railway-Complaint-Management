@@ -16,7 +16,7 @@ The system employs a layered architecture that safely intercepts, validates, and
 
 ![System Architecture](Architecture.png)
     
-```
+
 
 ### 🧩 Core System Modules:
 1.  **Module 1: User Auth & PNR Verification**: Handles passenger sign-ins and verifies live train journey details using PNR.
